@@ -5,7 +5,7 @@ class FetchError extends Data.TaggedError("FetchError")<Readonly<{}>> {}
 class JsonError extends Data.TaggedError("JsonError")<Readonly<{}>> {}
 
 const fetchRequest = Effect.tryPromise({
-  try: () => fetch("https://pokeapi.co/api/v2/psadokemon/garchomp/"),
+  try: () => fetch("https://pokeapi.co/api/v2/pokemon/garchomp/"),
   catch: () => new FetchError(),
 });
 
@@ -20,19 +20,20 @@ const savePokemon = (pokemon: unknown) =>
     fetch("/api/pokemon", { body: JSON.stringify(pokemon) })
   );
 
-const main = fetchRequest.pipe(
-  Effect.filterOrFail(
-    (response) => response.ok,
-    () => new FetchError()
-  ),
-  Effect.flatMap(jsonResponse),
-  Effect.flatMap(savePokemon),
+const program = Effect.gen(function* () {
+  const response = yield* fetchRequest;
+  if (!response.ok) {
+    return yield* new FetchError();
+  }
+
+  return yield* jsonResponse(response);
+});
+
+const main = program.pipe(
   Effect.catchTags({
     FetchError: () => Effect.succeed("Fetch error"),
     JsonError: () => Effect.succeed("Json error"),
-    UnknownException: () => Effect.succeed("Unknown error"),
-  }),
-  Effect.tap(Console.log)
+  })
 );
 
-Effect.runPromise(main);
+Effect.runPromise(main).then(console.log);
