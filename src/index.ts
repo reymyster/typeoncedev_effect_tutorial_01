@@ -1,8 +1,17 @@
-import { Console, Data, Effect, pipe } from "effect";
+import { Console, Data, Effect, pipe, Schema } from "effect";
 
 // Errors
 class FetchError extends Data.TaggedError("FetchError")<Readonly<{}>> {}
 class JsonError extends Data.TaggedError("JsonError")<Readonly<{}>> {}
+
+// Schema
+class Pokemon extends Schema.Class<Pokemon>("Pokemon")({
+  id: Schema.Number,
+  order: Schema.Number,
+  name: Schema.String,
+  height: Schema.Number,
+  weight: Schema.Number,
+}) {}
 
 // Implementation
 const fetchRequest = Effect.tryPromise({
@@ -16,6 +25,8 @@ const jsonResponse = (response: Response) =>
     catch: () => new JsonError(),
   });
 
+const decodePokemon = Schema.decodeUnknown(Pokemon);
+
 const savePokemon = (pokemon: unknown) =>
   Effect.tryPromise(() =>
     fetch("/api/pokemon", { body: JSON.stringify(pokemon) })
@@ -27,7 +38,9 @@ const program = Effect.gen(function* () {
     return yield* new FetchError();
   }
 
-  return yield* jsonResponse(response);
+  const json = yield* jsonResponse(response);
+
+  return yield* decodePokemon(json);
 });
 
 // Error handling
@@ -35,6 +48,7 @@ const main = program.pipe(
   Effect.catchTags({
     FetchError: () => Effect.succeed("Fetch error"),
     JsonError: () => Effect.succeed("Json error"),
+    ParseError: () => Effect.succeed("Parse error"),
   })
 );
 
