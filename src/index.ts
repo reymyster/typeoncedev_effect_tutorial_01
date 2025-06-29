@@ -1,9 +1,10 @@
 import { Console, Data, Effect, pipe } from "effect";
 
+// Errors
 class FetchError extends Data.TaggedError("FetchError")<Readonly<{}>> {}
-
 class JsonError extends Data.TaggedError("JsonError")<Readonly<{}>> {}
 
+// Implementation
 const fetchRequest = Effect.tryPromise({
   try: () => fetch("https://pokeapi.co/api/v2/pokemon/garchomp/"),
   catch: () => new FetchError(),
@@ -29,6 +30,7 @@ const program = Effect.gen(function* () {
   return yield* jsonResponse(response);
 });
 
+// Error handling
 const main = program.pipe(
   Effect.catchTags({
     FetchError: () => Effect.succeed("Fetch error"),
@@ -36,4 +38,5 @@ const main = program.pipe(
   })
 );
 
+// Running effect
 Effect.runPromise(main).then(console.log);
